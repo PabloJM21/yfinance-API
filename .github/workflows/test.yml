@@ -1,0 +1,36 @@
+name: backend-test
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker compose build
+
+      - name: Start full stack
+        run: docker compose up -d
+
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run API stability tests
+        run: pytest tests/test_stability.py
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down

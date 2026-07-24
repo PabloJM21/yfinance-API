@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    networks:
+      - my_network
+
+  redis:
+    image: redis:7
+    networks:
+      - my_network
+
+networks:
+  my_network:
