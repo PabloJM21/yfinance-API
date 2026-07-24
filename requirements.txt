@@ -36,5 +36,6 @@ urllib3==2.7.0
 websockets==16.1.1
 yfinance==1.5.1
 pytest
-locust 
+locust
 psutil
+pydantic_settings
