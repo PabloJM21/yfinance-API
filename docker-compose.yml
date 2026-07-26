@@ -15,5 +15,15 @@ services:
     networks:
       - my_network
 
+  test:
+    build:
+      context: .
+    command: pytest tests/test_stability.py
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - my_network
+
 networks:
   my_network:

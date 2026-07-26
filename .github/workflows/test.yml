@@ -28,9 +28,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Start full stack
+        run: docker compose -f docker-compose.yml up -d
+
       - name: Run API stability tests
-        run: pytest tests/test_stability.py
+        run: docker compose -f docker-compose.yml run --rm test
 
       - name: Tear down stack
         if: always()
-        run: docker compose -f docker-compose.yml down 
+        run: docker compose -f docker-compose.yml down
+
