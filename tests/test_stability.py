@@ -1,7 +1,7 @@
 import requests
 import threading
 import time
-from ..plot_scripts.plot_traffic import plot_traffic
+from plot_scripts.plot_traffic import plot_traffic
 
 BACKEND_URL = "http://backend:8080/api"
 
