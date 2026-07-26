@@ -1,3 +1,4 @@
+matplotlib==3.9.2
 redis==5.0.1
 uvicorn[standard]
 aiocache[redis]==0.12.3

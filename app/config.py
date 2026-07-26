@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
 
-    # Cache TTL for /api/stats responses
+    # Cache TTL for endpoint responses
     cache_ttl_seconds: int = 300
 
     # ---------------------------------------------------------
