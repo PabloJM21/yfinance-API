@@ -13,13 +13,6 @@ class Middleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
 
-        # Redis for https metrics
-        self.stats_cache = Cache.REDIS(
-            endpoint=settings.redis_host,
-            port=settings.redis_port,
-            namespace="metrics"
-        )
-
         # Redis for endpoint caching
         self.cache = Cache.REDIS(
             endpoint=settings.redis_host,

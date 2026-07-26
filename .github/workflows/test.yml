@@ -34,6 +34,12 @@ jobs:
       - name: Run API stability tests
         run: docker compose -f docker-compose.yml run --rm test
 
+      - name: Upload traffic plot
+        uses: actions/upload-artifact@v4
+        with:
+          name: traffic-plot
+          path: /tmp/traffic_plot.png
+
       - name: Tear down stack
         if: always()
         run: docker compose -f docker-compose.yml down
