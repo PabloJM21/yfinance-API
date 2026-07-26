@@ -2,7 +2,8 @@ import requests
 import threading
 import time
 
-BACKEND_URL = "http://localhost:8080/api/stats"
+BACKEND_URL = "http://backend:8080/api/stats"
+
 
 def test_query(params):
     r = requests.get(BACKEND_URL, params=params)
