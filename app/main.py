@@ -3,7 +3,6 @@ from fastapi import FastAPI
 from app.endpoints.stocks import router as stocks_router
 from app.middleware import Middleware
 from app.config import get_settings
-import os
 
 settings = get_settings()
 

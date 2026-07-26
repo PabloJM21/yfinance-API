@@ -13,14 +13,21 @@ class Middleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
 
-        # aiocache Redis backend (matches DEV article)
+        # Redis for https metrics
+        self.stats_cache = Cache.REDIS(
+            endpoint=settings.redis_host,
+            port=settings.redis_port,
+            namespace="metrics"
+        )
+
+        # Redis for endpoint caching
         self.cache = Cache.REDIS(
             endpoint=settings.redis_host,
             port=settings.redis_port,
             namespace="stats"
         )
 
-        # separate namespace for rate limiting
+        # Redis for rate limiting
         self.ratelimit_cache = Cache.REDIS(
             endpoint=settings.redis_host,
             port=settings.redis_port,
@@ -49,28 +56,6 @@ class Middleware(BaseHTTPMiddleware):
         await self.ratelimit_cache.set(bucket_key, current + 1, ttl=60)
         return None
 
-    # ---------------------------------------------------------
-    # LOGGING
-    # ---------------------------------------------------------
-    def log_request_start(self, request: Request):
-        print(json.dumps({
-            "event": "request_start",
-            "method": request.method,
-            "path": request.url.path,
-            "client_ip": request.client.host,
-            "api_key_used": bool(request.headers.get("X-API-Key")),
-        }))
-
-    def log_request_end(self, request: Request, response: Response, duration_ms: float):
-        print(json.dumps({
-            "event": "request_end",
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-            "duration_ms": duration_ms,
-            "client_ip": request.client.host,
-        }))
-
 
 
     # ---------------------------------------------------------
@@ -80,22 +65,36 @@ class Middleware(BaseHTTPMiddleware):
         if not settings.enable_cache:
             return None
 
+        # Only cache GET requests
         if request.method != "GET":
             return None
 
-        if request.url.path != "/api/stats":
-            return None
+        path = request.url.path  # e.g. "/api/stats"
 
+        # Extract query parameters
         params = request.query_params
 
-        ticker = params.get("ticker")
-        start = params.get("start")
-        end = params.get("end")
-
-        if not ticker or not start or not end:
+        # If no params → no cache key
+        if not params:
             return None
 
-        return f"{ticker}:{start}:{end}"
+        # Build sorted param list to avoid ordering issues
+        # Example: ["ticker=AAPL", "start=2023-01-01", "end=2023-12-31"]
+        parts = []
+        for key in sorted(params.keys()):
+            value = params.get(key)
+            if value is None:
+                continue
+            parts.append(value)
+
+        # If still empty → no cache
+        if not parts:
+            return None
+
+        # Final cache key format:
+        # "/api/stats:AAPL:2023-01-01:2023-12-31"
+        return f"{path}:" + ":".join(parts)
+
 
     # ---------------------------------------------------------
     # CACHING: GET cached response
@@ -106,10 +105,6 @@ class Middleware(BaseHTTPMiddleware):
 
         cached_value = await self.cache.get(cache_key)
         if cached_value:
-            print(json.dumps({
-                "event": "cache_hit",
-                "cache_key": cache_key,
-            }))
             return Response(
                 content=cached_value,
                 media_type="application/json",
@@ -129,6 +124,54 @@ class Middleware(BaseHTTPMiddleware):
 
 
     # ---------------------------------------------------------
+    # Helpers
+    # ---------------------------------------------------------
+
+    async def extract_cache(self, start: float, cached: Response):
+        duration = round((time.time() - start) * 1000, 2)
+
+        cached_body = json.loads(cached.body.decode())
+        cached_body["latency_ms"] = duration
+
+        return Response(
+            content=json.dumps(cached_body),
+            media_type="application/json",
+            status_code=200,
+        )
+
+
+    async def extract_body(self, response, start, cache_key):
+        # Read the body from the response stream
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+
+        duration = round((time.time() - start) * 1000, 2)
+
+        # Always produce valid JSON
+        try:
+            payload = json.loads(body.decode())
+        except Exception:
+            # Fallback: wrap raw text in JSON
+            payload = {"data": body.decode()}
+
+        payload["latency_ms"] = duration
+
+        # Store original response (without latency) in cache
+        if cache_key:
+            await self.store_cached_response(cache_key, body.decode())
+
+        # Return JSON response
+        return Response(
+            content=json.dumps(payload),
+            media_type="application/json",
+            status_code=response.status_code,
+        )
+
+
+        
+
+    # ---------------------------------------------------------
     # MAIN DISPATCH
     # ---------------------------------------------------------
     async def dispatch(self, request: Request, call_next):
@@ -138,37 +181,16 @@ class Middleware(BaseHTTPMiddleware):
             return rl
 
         start = time.time()
-        self.log_request_start(request)
-
         cache_key = self.build_stats_cache_key(request)
 
         # Try cache
         cached = await self.get_cached_response(cache_key)
         if cached:
-            duration = round((time.time() - start) * 1000, 2)
-            self.log_request_end(request, cached, duration)
-            return cached
+            return await self.extract_cache(start, cached)
 
-        # Process request
+        # Process request normally
         response = await call_next(request)
 
-        # Capture body from StreamingResponse
-        body = b""
-        async for chunk in response.body_iterator:
-            body += chunk
-
-        # Restore body iterator with async generator
-        async def new_body_iterator():
-            yield body
-
-        response.body_iterator = new_body_iterator()
-
-        # Store in cache
-        await self.store_cached_response(cache_key, body.decode())
-
-        duration = round((time.time() - start) * 1000, 2)
-        self.log_request_end(request, response, duration)
-
-        return response
-
+        # Extract body + add latency + store cache 
+        return await self.extract_body(response, start, cache_key)
 
