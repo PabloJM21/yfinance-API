@@ -62,4 +62,4 @@ def test_stability():
     #assert mem_mb < MAX_MEMORY, f"Memory usage too high: {mem_mb:.2f} MB"
 
 
-    plot_traffic(metrics, "/tmp/concurrency_plot.png") #, mem_mb, MAX_MEMORY)
+    plot_traffic(metrics, "/artifacts/concurrency_plot.png") #, mem_mb, MAX_MEMORY)

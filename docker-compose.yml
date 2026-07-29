@@ -24,6 +24,10 @@ services:
     depends_on:
       - backend
       - redis
+
+    
+    volumes:
+      - ./artifacts:/artifacts
     networks:
       - my_network
 

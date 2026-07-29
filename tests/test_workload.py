@@ -53,4 +53,4 @@ def test_stability():
     # Generate plot directly
     #print("plot_traffic called, saving to:", "/tmp/traffic_plot.png")
 
-    plot_traffic(metrics, "/tmp/workload_plot.png", mem_mb, MAX_MEMORY)
+    plot_traffic(metrics, "/artifacts/workload_plot.png", mem_mb, MAX_MEMORY)

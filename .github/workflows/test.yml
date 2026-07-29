@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: workload-plot
-          path: /tmp/workload_plot.png
+          path: artifacts/workload_plot.png
 
       - name: Tear down stack
         if: always()
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: concurrency-plot
-          path: /tmp/concurrency_plot.png
+          path: artifacts/concurrency_plot.png
 
       - name: Tear down stack
         if: always()
