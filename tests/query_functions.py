@@ -7,7 +7,7 @@ BACKEND_URL = "http://backend:8080/api"
 #BACKEND_URL = "http://localhost:8080/api"
 
 
-def run_query(params, metrics, endpoint, label):
+def run_query(params, metrics, endpoint, label, with_memory=False):
     r = requests.get(BACKEND_URL + endpoint, params=params)
 
     # Store detailed sample
@@ -30,6 +30,9 @@ def run_query(params, metrics, endpoint, label):
     data = r.json()
     assert "results" in data
     assert all(data.get(k) == v for k, v in params.items())
+
+    if with_memory:
+        return r.json().get("rss_mb")
 
 
 

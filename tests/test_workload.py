@@ -13,13 +13,16 @@ def test_stability():
 
 
     # Find the uvicorn process
-    uvicorn_procs = [
+    """uvicorn_procs = [
         p for p in psutil.process_iter(['name']) 
         if p.info['name'] and 'uvicorn' in p.info['name']
     ]
     assert uvicorn_procs, "Backend process not found"
     proc = uvicorn_procs[0]
-    mem_mb = proc.memory_info().rss / (1024 * 1024)
+    mem_mb = proc.memory_info().rss / (1024 * 1024)"""
+
+
+
     #print(f"Memory usage before: {mem_mb}")
 
     metrics = {
@@ -40,7 +43,7 @@ def test_stability():
     params = {"ticker": "AAPL", "start": "2022-01-01", "end": "2025-01-01"}
     run_query(params, metrics, endpoint, label)
     params = {"ticker": "AAPL", "start": "2021-01-01", "end": "2025-01-01"}
-    run_query(params, metrics, endpoint, label)
+    mem_mb = run_query(params, metrics, endpoint, label, with_memory=True)
 
     
 
