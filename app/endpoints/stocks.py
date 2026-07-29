@@ -20,9 +20,7 @@ async def get_company(
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
-
-        return {
-            "ticker": ticker,
+        results = {
             "name": info.get("longName"),
             "sector": info.get("sector"),
             "industry": info.get("industry"),
@@ -32,6 +30,11 @@ async def get_company(
             "employees": info.get("fullTimeEmployees"),
             "description": info.get("longBusinessSummary"),
         }
+
+        return {
+                "ticker": ticker,
+                "results": results,
+            }
 
     except Exception as e:
         raise HTTPException(detail=str(e))
@@ -52,8 +55,7 @@ async def get_quote(
         stock = yf.Ticker(ticker)
         info = stock.fast_info
 
-        return {
-            "ticker": ticker,
+        results = {
             "price": info.get("lastPrice"),
             "previousClose": info.get("previousClose"),
             "change": info.get("lastPrice") - info.get("previousClose"),
@@ -66,6 +68,11 @@ async def get_quote(
             "volume": info.get("lastVolume"),
             "marketCap": info.get("marketCap"),
             "currency": info.get("currency")
+            }
+
+        return {
+            "ticker": ticker,
+            "results": results,
         }
     except Exception as e:
         raise HTTPException(detail=str(e))

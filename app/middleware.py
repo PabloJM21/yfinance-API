@@ -6,6 +6,7 @@ from aiocache import Cache
 
 from app.config import get_settings
 
+
 settings = get_settings()
 
 
@@ -19,6 +20,7 @@ class Middleware(BaseHTTPMiddleware):
             port=settings.redis_port,
             namespace="stats"
         )
+
 
         # Redis for rate limiting
         self.ratelimit_cache = Cache.REDIS(

@@ -99,11 +99,20 @@ The configuration module contains parameters controlling application-wide behavi
 - cache enable/disable behavior
 - cache TTL
 - request rate limits
-- logging configuration
 - yfinance-specific configuration
 - environment-dependent settings
 
-Centralizing these parameters allows runtime behavior to be modified without changing endpoint implementations.
+The following options control how the application interacts with the `yfinance` library. 
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `yf_proxy` | `None` | Optional HTTP/HTTPS proxy URL used for all `yfinance` requests. Leave `None` to connect directly. |
+| `yf_retries` | `0` | Number of times a failed request should be retried before giving up.|
+| `yf_debug_hide_exceptions` | `True` | Suppresses detailed exception tracebacks and returns cleaner error messages.  |
+| `yf_debug_logging` | `True` | Enables verbose debug logging from `yfinance` to help diagnose request and parsing issues. Disable it for quieter output. |
+| `yf_locale_lang` | `"en-US"` | Language used when sending requests to Yahoo Finance. Normally does not affect market data but may influence localized content. |
+| `yf_locale_region` | `"US"` | Region used for Yahoo Finance requests. Can affect locale-specific responses such as news or formatting. |
+
 
 ---
 
@@ -115,9 +124,8 @@ Current responsibilities include:
 
 - response caching using Redis,
 - request rate limiting,
-- request latency measurement,
-- attachment of latency information to responses,
-- request/response processing.
+- latency measurement and attachment to responses
+
 
 Because these concerns are implemented independently of the endpoint handlers, new functionality can be introduced without modifying the API implementation itself.
 
@@ -125,9 +133,7 @@ The current middleware structure is intended to support future extensions such a
 
 - API key authentication,
 - structured request logging,
-- Prometheus metrics export,
-- OpenTelemetry instrumentation,
-- integration with monitoring platforms such as Grafana.
+- metrics export and integration with monitoring platforms such as Grafana.
 
 ---
 
@@ -265,7 +271,7 @@ For each trading day, the endpoint returns
 - traded volume
 - arithmetic average of the OHLC values
 
-The returned data structure is intended to provide a compact representation suitable for downstream visualization or statistical analysis without requiring additional processing by the client.
+The returned data structure is intended for downstream visualization or statistical analysis without requiring additional processing by the client.
 
 
 
@@ -273,58 +279,39 @@ The returned data structure is intended to provide a compact representation suit
 
 The automated test suite is located in the `tests/` directory.
 
-Currently, the repository contains a stability test targeting the `/stats` endpoint:
+Currently, the repository contains two stability tests covering both workload scaling and concurrent execution.:
 
 ```
-tests/test_stability.py
+tests/test_workload.py
+tests/test_concurrency.py
 ```
 
-The `/stats` endpoint was selected because it exercises the largest data retrieval path in the application, requiring historical market data to be downloaded, transformed into JSON, and returned to the client.
+## `tests/test_workload.py`
 
-The current stability test consists of three stages.
+This test exercises only the `/stats` endpoint.
+It progressively increases the workload by sending requests with larger historical date ranges for the same ticker.
+The test passes if every request succeeds.
 
-## Large historical request
-
-The test first executes a request covering approximately four years of historical data:
-
-```
-Ticker : AAPL
-Start  : 2020-01-01
-End    : 2024-01-01
-```
-
-This evaluates the endpoint under a comparatively large response payload and records the corresponding request latency.
 
 ---
 
-## Concurrent requests
+## `tests/test_concurrency.py`
 
-The test then executes ten concurrent requests against a smaller historical dataset:
+This test covers all three API endpoints: `/company`, `/quote`, and `/stats`.
+It issues concurrent requests across the endpoints and passes if all requests complete successfully.
 
-```
-Ticker : AAPL
-Start  : 2024-05-01
-End    : 2024-05-10
-```
-
-Each request is executed in a separate Python thread.
-
-The concurrent execution verifies that:
-
-- multiple requests can be processed simultaneously,
-- Redis-backed caching behaves correctly under concurrent access,
-- request latency remains bounded during parallel execution,
-- no unexpected failures occur while multiple clients access the same endpoint.
+The concurrent execution verifies that the application remains stable while serving multiple clients simultaneously
 
 ---
 
-## Diagnostic data collection
+## Assertions and diagnostics
 
-Latency information collected during every request is stored throughout the test execution.
+In addition to verifying successful execution, both tests support assertions on:
 
-After all requests complete, the collected metrics are passed to the plotting utilities in `plot_scripts/` to generate a diagnostic visualization of request latency.
+- maximum response latency,
+- backend memory consumption (including Python package and allocation usage).
 
-Although the current implementation focuses on the `/stats` endpoint, the testing framework can be extended to include additional endpoints, larger workloads, or more complex request patterns.
+These assertions test the robustness of the application under latency and hardware constrains. 
 
 ---
 
@@ -338,11 +325,10 @@ Currently, the repository provides
 plot_scripts/plot_traffic.py
 ```
 
-which generates a traffic and latency visualization from the metrics collected during stability testing.
+which generates a latency and memory consumption visualization from the metrics collected during endpoint testing.
 
 The resulting plot is uploaded as a GitHub Actions artifact, allowing request timing to be inspected after every CI run.
 
-Separating visualization from the test implementation allows additional diagnostic plots to be introduced without modifying the testing logic.
 
 ---
 
@@ -389,13 +375,7 @@ The Docker Compose configuration starts three services:
 - a Redis container,
 - a dedicated test container.
 
-The test container executes
-
-```bash
-pytest tests/test_stability.py
-```
-
-against the running backend.
+The test container allows to execture tests against the running backend.
 
 Since the workflow builds the application locally and executes all tests within the GitHub Actions runner, no external infrastructure is required.
 
@@ -473,7 +453,7 @@ Running the application as a non-root user follows standard container security p
 
 The local development environment is defined in `docker-compose.yml`.
 
-The Compose stack consists of three services.
+The Compose stack consists of three services that are used by the GitHub Actions workflows
 
 ### Backend
 
@@ -492,15 +472,9 @@ Redis is used by the middleware for:
 
 ### Test
 
-Builds the same application image but executes
+Builds and launches the same application in new container to execute the test scripts.
 
-```bash
-pytest tests/test_stability.py
-```
 
-instead of launching the API server.
-
-This service is used both during local development and by the GitHub Actions testing workflow to execute the stability tests in an identical containerized environment.
 
 ---
 
@@ -511,58 +485,111 @@ This service is used both during local development and by the GitHub Actions tes
 - Docker
 - Docker Compose
 
-or
 
-- Python 3.13+
+The API will be available at
+
+```
+http://localhost:8080
+
+```
+
+
 
 ---
 
-## Run with Docker
+## Run with Docker Compose
+
+This uses the same containerized environment as the GitHub Actions CI workflow.
+
+Start the FastAPI backend, the test container and the redis service:
 
 ```bash
 docker compose up --build
 ```
 
-This starts:
-
-- the FastAPI backend,
-- the Redis service.
-
-The API is then available at
-
-```
-http://localhost:8080
-```
-
----
-
-## Run without Docker
-
-Install the dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-Start the application
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8080
-```
-
----
-
-# Running Tests
 
 To execute the stability tests locally:
 
 ```bash
-docker compose run --rm test
+docker compose run --rm test tests/test_workload.py
+```
+```bash
+docker compose run --rm test tests/test_concurrency.py
 ```
 
-This uses the same containerized environment as the GitHub Actions CI workflow, ensuring consistent execution between local development and automated testing.
+
+Finally tear down the stack
+
+```bash
+docker compose down
+```
 
 ---
+
+## Run with Docker
+
+
+Create a Docker network
+
+```bash
+docker network create my_network
+```
+
+### Start Redis
+
+```bash
+docker run -d \
+  --name redis \
+  --network my_network \
+  -v redis_data:/data \
+  redis:7
+```
+
+### Build the backend image and start the container
+
+```bash
+docker build -t backend-image .
+```
+
+```bash
+docker run -d \
+  --name backend \
+  --network my_network \
+  -e REDIS_HOST=redis \
+  -e REDIS_PORT=6379 \
+  -p 8080:8080 \
+  backend-image
+```
+
+### Build the test image and run tests
+
+```bash
+docker build -t test-image .
+```
+
+
+```bash
+docker run --rm \
+  --network my_network \
+  test-image \
+  tests/test_workload.py
+```
+
+```bash
+docker run --rm \
+  --network my_network \
+  test-image \
+  tests/test_concurrency.py
+```
+
+Cleanup
+
+```bash
+docker rm -f backend redis
+docker network rm my_network
+docker volume rm redis_data
+```
+
 
 # Future Extensions
 

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # enable/disable caching in middleware
     enable_cache: bool = True
 
-    redis_host: str = "localhost"
+    redis_host: str = "redis" #"localhost" #(if backend runs in WSL)
     redis_port: int = 6379
 
     # Cache TTL for endpoint responses
@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     # RATE LIMITING
     # ---------------------------------------------------------
     rate_limit_per_minute: int = 60
-    api_key_rate_limit_per_minute: int = 120
 
     # ---------------------------------------------------------
     # YFINANCE CONFIG 
@@ -36,7 +35,7 @@ class Settings(BaseSettings):
 
     # Debug
     yf_debug_hide_exceptions: bool = True
-    yf_debug_logging: bool = False
+    yf_debug_logging: bool = True #False
 
     # Locale
     yf_locale_lang: str = "en-US"

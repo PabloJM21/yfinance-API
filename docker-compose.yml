@@ -12,18 +12,23 @@ services:
 
   redis:
     image: redis:7
+    volumes:
+      - redis_data:/data
     networks:
       - my_network
 
   test:
     build:
       context: .
-    command: pytest tests/test_stability.py
+
     depends_on:
       - backend
       - redis
     networks:
       - my_network
+
+volumes:
+  redis_data:
 
 networks:
   my_network:

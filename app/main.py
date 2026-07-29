@@ -19,9 +19,9 @@ yf.config.locale.region = settings.yf_locale_region
 yf.set_tz_cache_location("/tmp/yfinance-cache")
 
 
-
-
 app = FastAPI(title="Stock API", version="1.0.0")
+
+
 
 # Add middleware
 app.add_middleware(Middleware)

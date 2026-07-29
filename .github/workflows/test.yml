@@ -5,42 +5,70 @@ on:
     branches: ["main"]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Build backend image
-        run: docker compose -f docker-compose.yml build 
-
-      - name: Start full stack
-        run: docker compose -f docker-compose.yml up -d 
+        run: docker compose -f docker-compose.yml build
 
 
-  test:
+  workload-test:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Start full stack
+      - name: Build images
+        run: docker compose -f docker-compose.yml build
+
+      - name: Start stack
         run: docker compose -f docker-compose.yml up -d
 
-      - name: Run API stability tests
-        run: docker compose -f docker-compose.yml run --rm test
+      - name: Run endpoint workload tests
+        run: docker compose -f docker-compose.yml run --rm test pytest tests/test_workload.py
 
-      - name: Upload traffic plot
+      - name: Upload workload plot
         uses: actions/upload-artifact@v4
         with:
-          name: traffic-plot
-          path: /tmp/traffic_plot.png
+          name: workload-plot
+          path: /tmp/workload_plot.png
 
       - name: Tear down stack
         if: always()
         run: docker compose -f docker-compose.yml down
+
+
+
+
+  concurrency-test:
+    needs: workload-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose -f docker-compose.yml build
+
+      - name: Start stack
+        run: docker compose -f docker-compose.yml up -d
+
+      - name: Run endpoint concurrency tests
+        run: docker compose -f docker-compose.yml run --rm test pytest tests/test_concurrency.py
+
+      - name: Upload concurrency plot
+        uses: actions/upload-artifact@v4
+        with:
+          name: concurrency-plot
+          path: /tmp/concurrency_plot.png
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker-compose.yml down
+
+
 
