@@ -37,7 +37,7 @@ jobs:
       - name: Run API memory budget test
         id: budget
         run: |
-          OUT=$(docker compose -f docker-compose.yml run --rm test pytest -q tests/test_budget.py)
+          OUT=$(docker compose -f docker-compose.yml run --rm test pytest -q tests/test_budget.py -s)
           echo "$OUT"
           echo "mem=$(echo "$OUT" | grep MEMORY_USAGE | cut -d= -f2)" >> $GITHUB_OUTPUT
 
@@ -76,13 +76,13 @@ jobs:
         run: docker compose -f docker-compose.yml up -d
 
       - name: Run endpoint stability tests
-        run: docker compose -f docker-compose.yml run --rm test pytest tests/test_concurrency.py
+        run: docker compose -f docker-compose.yml run --rm test pytest tests/test_stability.py
 
-      - name: Upload concurrency plot
+      - name: Upload latency plot
         uses: actions/upload-artifact@v4
         with:
-          name: concurrency-plot
-          path: artifacts/concurrency_plot.png
+          name: latency-plot
+          path: artifacts/latency_plot.png
 
       - name: Tear down stack
         if: always()

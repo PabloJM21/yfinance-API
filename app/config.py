@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # enable/disable caching in middleware
     enable_cache: bool = True
 
-    redis_host: str = "redis" #"localhost" #(if backend runs in WSL) 
+    redis_host: str = "redis" #"localhost" #(if backend runs in WSL) # 
     redis_port: int = 6379
 
     # Cache TTL for endpoint responses

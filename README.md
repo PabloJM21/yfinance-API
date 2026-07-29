@@ -279,41 +279,31 @@ The returned data structure is intended for downstream visualization or statisti
 
 The automated test suite is located in the `tests/` directory.
 
-Currently, the repository contains two stability tests covering both workload scaling and concurrent execution.:
+Currently, the repository contains two stability tests covering application memory usage and concurrent endpoint execution:
 
+```text
+tests/test_budget.py
+tests/test_stability.py
 ```
-tests/test_workload.py
-tests/test_concurrency.py
-```
 
-## `tests/test_workload.py`
+## `tests/test_budget.py`
 
-This test exercises only the `/stats` endpoint.
-It progressively increases the workload by sending requests with larger historical date ranges for the same ticker.
-The test passes if every request succeeds.
+This test measures the amount of RAM allocated by the application and its dependencies during execution (native libraries, imported packages, allocated objects).
 
+The test passes if the measured memory consumption remains below a configurable upper bound, allowing the limit to be adjusted based on the hardware constraints.
 
 ---
 
-## `tests/test_concurrency.py`
+## `tests/test_stability.py`
 
-This test covers all three API endpoints: `/company`, `/quote`, and `/stats`.
-It issues concurrent requests across the endpoints and passes if all requests complete successfully.
+This test covers all three API endpoints: `/company`, `/quote`, and `/stats` and verifies that the application remains stable while serving multiple clients simultaneously.
 
-The concurrent execution verifies that the application remains stable while serving multiple clients simultaneously
+It issues multiple concurrent requests to each endpoint while measuring request latency. The test passes if all requests complete successfully.
 
----
-
-## Assertions and diagnostics
-
-In addition to verifying successful execution, both tests support assertions on:
-
-- maximum response latency,
-- backend memory consumption (including Python package and allocation usage).
-
-These assertions test the robustness of the application under latency and hardware constrains. 
+Optionally, the test can also assert that the maximum request latency remains below a configurable threshold.
 
 ---
+
 
 # Diagnostic Plot Scripts
 
@@ -364,9 +354,7 @@ The test job performs the following steps:
 
 1. checks out the repository,
 2. starts the Docker Compose stack,
-3. executes `tests/test_stability.py` inside the dedicated test container,
-4. generates the latency visualization,
-5. uploads the generated traffic plot as a GitHub Actions artifact,
+3. executes test scripts inside the dedicated container,
 6. tears down the Docker Compose stack.
 
 The Docker Compose configuration starts three services:
