@@ -20,7 +20,7 @@ jobs:
         run: docker compose -f docker-compose.yml build
 
 
-  workload-test:
+  budget-test:
     needs: build
     runs-on: ubuntu-latest
 
@@ -38,14 +38,19 @@ jobs:
       - name: Start stack
         run: docker compose -f docker-compose.yml up -d
 
-      - name: Run endpoint workload tests
-        run: docker compose -f docker-compose.yml run --rm test pytest tests/test_workload.py
+      - name: Run API memory budget test
+        id: budget
+        run: |
+          OUT=$(docker compose -f docker-compose.yml run --rm test pytest -q tests/test_budget.py)
+          echo "$OUT"
+          echo "mem=$(echo "$OUT" | grep MEMORY_USAGE | cut -d= -f2)" >> $GITHUB_OUTPUT
 
-      - name: Upload workload plot
-        uses: actions/upload-artifact@v4
-        with:
-          name: workload-plot
-          path: artifacts/workload_plot.png
+
+      - name: Add memory usage to summary
+        run: |
+          echo "### Memory Budget Test Passed" >> $GITHUB_STEP_SUMMARY
+          echo "Memory used: ${{ steps.budget.outputs.mem }} MB (below max memory of 200 MB)" >> $GITHUB_STEP_SUMMARY
+
 
       - name: Tear down stack
         if: always()
@@ -55,7 +60,7 @@ jobs:
 
 
   concurrency-test:
-    needs: workload-test
+    needs: stability-test
     runs-on: ubuntu-latest
 
     steps:
@@ -66,7 +71,7 @@ jobs:
         run: |
           mkdir -p artifacts
           chmod 777 artifacts
-          
+
 
       - name: Build images
         run: docker compose -f docker-compose.yml build
@@ -74,7 +79,7 @@ jobs:
       - name: Start stack
         run: docker compose -f docker-compose.yml up -d
 
-      - name: Run endpoint concurrency tests
+      - name: Run endpoint stability tests
         run: docker compose -f docker-compose.yml run --rm test pytest tests/test_concurrency.py
 
       - name: Upload concurrency plot

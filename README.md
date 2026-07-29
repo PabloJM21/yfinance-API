@@ -598,11 +598,7 @@ The current project structure separates endpoint implementations, middleware, te
 Potential future additions include:
 
 - additional market data endpoints,
-- endpoint-specific integration and stability tests,
 - API key authentication,
-- structured logging,
-- Prometheus metrics export,
-- OpenTelemetry instrumentation,
-- additional diagnostic visualizations,
-- extended load and stress testing,
 - automated ECS infrastructure provisioning.
+
+

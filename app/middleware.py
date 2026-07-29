@@ -153,10 +153,6 @@ class Middleware(BaseHTTPMiddleware):
         # record latency
         payload["latency_ms"] = duration
 
-        # record memory usage
-        import psutil, os
-        p = psutil.Process(os.getpid())
-        payload["rss_mb"] = p.memory_info().rss / (1024 * 1024)
 
         # Store original response (without latency) in cache
         if cache_key:

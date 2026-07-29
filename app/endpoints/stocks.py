@@ -112,4 +112,10 @@ async def get_stock_data(
     }
 
 
-
+@router.get("/memory")
+async def get_memory(
+    ):
+    # record memory usage
+    import psutil, os
+    p = psutil.Process(os.getpid())
+    return {"mem_mb": p.memory_info().rss / (1024 * 1024)}
