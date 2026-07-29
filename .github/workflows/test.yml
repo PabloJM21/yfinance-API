@@ -9,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Prepare artifacts directory
+        run: |
+          mkdir -p artifacts
+          chmod 777 artifacts
+
       - uses: actions/checkout@v4
 
       - name: Build backend image
@@ -21,6 +26,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare artifacts directory
+        run: |
+          mkdir -p artifacts
+          chmod 777 artifacts
 
       - name: Build images
         run: docker compose -f docker-compose.yml build
@@ -50,6 +60,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+
+      - name: Prepare artifacts directory
+        run: |
+          mkdir -p artifacts
+          chmod 777 artifacts
+          
 
       - name: Build images
         run: docker compose -f docker-compose.yml build
