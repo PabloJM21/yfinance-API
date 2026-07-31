@@ -4,6 +4,35 @@ A FastAPI backend exposing stock market data through the `yfinance` library. The
 
 The repository is organized into independent modules for application logic, middleware, testing, diagnostics, and deployment, allowing these components to evolve independently.
 
+
+## 📑 Index
+
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+  - [Application Layer](#application-layer)
+- [API Endpoints](#api-endpoints)
+  - [`GET /api/company`](#get-apicompany)
+  - [`GET /api/quote`](#get-apiquote)
+  - [`GET /api/stats`](#get-apistats)
+- [Testing](#testing)
+  - [`tests/test_budget.py`](#teststest_budgetpy)
+  - [`tests/test_stability.py`](#teststest_stabilitypy)
+- [Diagnostic Plot Scripts](#diagnostic-plot-scripts)
+- [Containerization](#containerization)
+  - [Dockerfile](#dockerfile)
+  - [Docker Compose](#docker-compose)
+- [Local Development](#local-development)
+  - [Prerequisites](#prerequisites)
+  - [Run with Docker Compose](#run-with-docker-compose)
+  - [Run with Docker](#run-with-docker)
+- [Continuous Integration](#continuous-integration)
+  - [`test.yml`](#testyml)
+- [Continuous Deployment (Prototype)](#continuous-deployment-prototype)
+- [Future Extensions](#future-extensions)
+
+
+
 ---
 
 ## Features
@@ -351,16 +380,12 @@ The backend connects to Redis using environment variables provided through Docke
 
 Runs the official Redis image.
 
-Redis is used by the middleware for:
+Redis is used by the middleware for response caching.
 
-- response caching,
-- request rate limiting.
 
 ### Test
 
 Builds and launches the same application in new container to execute the test scripts.
-
-
 
 ---
 
@@ -376,7 +401,6 @@ The API will be available at
 
 ```
 http://localhost:8080
-
 ```
 
 
