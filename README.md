@@ -5,7 +5,7 @@ A FastAPI backend exposing stock market data through the `yfinance` library. The
 The repository is organized into independent modules for application logic, middleware, testing, diagnostics, and deployment, allowing these components to evolve independently.
 
 
-## 📑 Index
+## Index
 
 - [Features](#features)
 - [Project Structure](#project-structure)

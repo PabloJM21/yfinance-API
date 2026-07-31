@@ -27,10 +27,6 @@ class Settings(BaseSettings):
     # Cache TTL for endpoint responses
     cache_ttl_seconds: int = 300
 
-    # ---------------------------------------------------------
-    # RATE LIMITING
-    # ---------------------------------------------------------
-    rate_limit_per_minute: int = 60
 
     # ---------------------------------------------------------
     # YFINANCE CONFIG 
