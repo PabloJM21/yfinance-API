@@ -25,7 +25,6 @@ services:
       - backend
       - redis
 
-    
     volumes:
       - ./artifacts:/artifacts
     networks:

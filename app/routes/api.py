@@ -40,6 +40,7 @@ async def get_company(
         raise HTTPException(detail=str(e))
 
 
+import datetime
 
 @router.get("/quote")
 async def get_quote(
@@ -54,8 +55,12 @@ async def get_quote(
     try:
         stock = yf.Ticker(ticker)
         info = stock.fast_info
+    
+        ts = stock.history_metadata.get("regularMarketTime")
+        ts = datetime.datetime.fromtimestamp(ts, datetime.UTC)
 
         results = {
+            "timestamp": ts,
             "price": info.get("lastPrice"),
             "previousClose": info.get("previousClose"),
             "change": info.get("lastPrice") - info.get("previousClose"),

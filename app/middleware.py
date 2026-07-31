@@ -18,39 +18,8 @@ class Middleware(BaseHTTPMiddleware):
         self.cache = Cache.REDIS(
             endpoint=settings.redis_host,
             port=settings.redis_port,
-            namespace="stats"
+            namespace="yfinance"
         )
-
-
-        # Redis for rate limiting
-        self.ratelimit_cache = Cache.REDIS(
-            endpoint=settings.redis_host,
-            port=settings.redis_port,
-            namespace="ratelimit"
-        )
-
-    # ---------------------------------------------------------
-    # RATE LIMITING
-    # ---------------------------------------------------------
-    async def rate_limit(self, request: Request) -> Response | None:
-        client_ip = request.client.host
-
-        bucket_key = f"ip:{client_ip}"
-        limit = settings.rate_limit_per_minute
-
-        current = await self.ratelimit_cache.get(bucket_key)
-        current = int(current) if current else 0
-
-        if current >= limit:
-            return Response(
-                content=json.dumps({"detail": "Rate limit exceeded"}),
-                status_code=429,
-                media_type="application/json",
-            )
-
-        await self.ratelimit_cache.set(bucket_key, current + 1, ttl=60)
-        return None
-
 
 
     # ---------------------------------------------------------
@@ -87,7 +56,7 @@ class Middleware(BaseHTTPMiddleware):
             return None
 
         # Final cache key format:
-        # "/api/stats:AAPL:2023-01-01:2023-12-31"
+        # Example: "/api/stats:AAPL:2023-01-01:2023-12-31"
         return f"{path}:" + ":".join(parts)
 
 
@@ -172,10 +141,6 @@ class Middleware(BaseHTTPMiddleware):
     # MAIN DISPATCH
     # ---------------------------------------------------------
     async def dispatch(self, request: Request, call_next):
-        # Rate limiting
-        rl = await self.rate_limit(request)
-        if rl:
-            return rl
 
         start = time.time()
         cache_key = self.build_stats_cache_key(request)

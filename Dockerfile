@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 8080
 
-# Setup an app user so the container doesn't run as the root user
+# Setup an app user 
 RUN useradd -m app
 USER app
 

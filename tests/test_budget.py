@@ -1,13 +1,15 @@
 import requests
 import time
-from .query_functions import BACKEND_URL
+from app.config import get_settings
+
+settings = get_settings()
 
 MAX_MEMORY = 200
 
 def test_budget():
     time.sleep(3)
 
-    r = requests.get(BACKEND_URL + "/memory")
+    r = requests.get(settings.backend_url + "/memory")
     mem_mb = r.json().get("mem_mb")
 
     print(f"MEMORY_USAGE={mem_mb}")  

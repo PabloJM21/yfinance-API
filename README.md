@@ -13,8 +13,6 @@ The repository is organized into independent modules for application logic, midd
 - Market quote endpoint
 - Historical OHLCV endpoint
 - Redis-backed response caching
-- Request rate limiting
-- Per-request latency instrumentation
 - Docker and Docker Compose support
 - Automated CI testing
 - Prototype deployment workflow for AWS ECR/ECS
@@ -29,14 +27,15 @@ The repository is organized into independent modules for application logic, midd
 ```text
 .
 ├── app/
-│   ├── endpoints/
-│   │   └── stocks.py          # API endpoint implementations
+│   ├── routes/
+│   │   └── api.py          # API endpoint implementations
 │   ├── config.py              # Application configuration
 │   ├── main.py                # FastAPI application entry point
 │   └── middleware.py          # Request middleware
 │
 ├── tests/
-│   └── test_stability.py      # API stability tests
+│   ├── test_budget.yml        # memory budget test
+│   └── test_stability.py      # endpoint stability tests
 │
 ├── plot_scripts/
 │   └── plot_traffic.py        # Diagnostic plot generation
@@ -47,8 +46,6 @@ The repository is organized into independent modules for application logic, midd
 │
 ├── Dockerfile
 ├── docker-compose.yml
-├── docker-compose-nginx.yml
-├── nginx.conf
 └── requirements.txt
 ```
 
@@ -71,15 +68,15 @@ Its responsibilities are:
 - loading and registering the API routers,
 - configuring the request processing pipeline.
 
-The application logic itself remains isolated from cross-cutting concerns such as caching or rate limiting, which are implemented by the middleware layer.
+The application logic itself remains isolated from cross-cutting concerns such as caching, which are implemented by the middleware layer.
 
 ---
 
-### `app/endpoints/`
+### `app/routes/`
 
-The `endpoints` package contains the implementation of the REST API.
+The `routes` package contains the implementation of the REST API.
 
-Currently, `stocks.py` exposes three endpoints:
+Currently, `api.py` exposes three endpoints:
 
 - `/company`
 - `/quote`
@@ -98,7 +95,6 @@ The configuration module contains parameters controlling application-wide behavi
 - Redis connection settings
 - cache enable/disable behavior
 - cache TTL
-- request rate limits
 - yfinance-specific configuration
 - environment-dependent settings
 
@@ -106,10 +102,6 @@ The following options control how the application interacts with the `yfinance` 
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `yf_proxy` | `None` | Optional HTTP/HTTPS proxy URL used for all `yfinance` requests. Leave `None` to connect directly. |
-| `yf_retries` | `0` | Number of times a failed request should be retried before giving up.|
-| `yf_debug_hide_exceptions` | `True` | Suppresses detailed exception tracebacks and returns cleaner error messages.  |
-| `yf_debug_logging` | `True` | Enables verbose debug logging from `yfinance` to help diagnose request and parsing issues. Disable it for quieter output. |
 | `yf_locale_lang` | `"en-US"` | Language used when sending requests to Yahoo Finance. Normally does not affect market data but may influence localized content. |
 | `yf_locale_region` | `"US"` | Region used for Yahoo Finance requests. Can affect locale-specific responses such as news or formatting. |
 
@@ -123,7 +115,6 @@ The middleware implements functionality executed before and after every request.
 Current responsibilities include:
 
 - response caching using Redis,
-- request rate limiting,
 - latency measurement and attachment to responses
 
 
@@ -132,7 +123,8 @@ Because these concerns are implemented independently of the endpoint handlers, n
 The current middleware structure is intended to support future extensions such as:
 
 - API key authentication,
-- structured request logging,
+- rate limiting,
+- request logging,
 - metrics export and integration with monitoring platforms such as Grafana.
 
 ---
@@ -200,6 +192,7 @@ The endpoint uses the `Ticker.fast_info` interface from `yfinance`, making it su
 ```json
 {
     "ticker": "AAPL",
+    "timestampt": "2026-07-29T20:00:01+00:00"
     "price": 215.42,
     "previousClose": 214.17,
     "change": 1.25,
@@ -322,101 +315,6 @@ The resulting plot is uploaded as a GitHub Actions artifact, allowing request ti
 
 ---
 
-# Continuous Integration
-
-Continuous Integration workflows are located in
-
-```
-.github/workflows/
-```
-
-## `test.yml`
-
-The testing workflow is executed whenever a pull request targets the `main` branch.
-
-The workflow is divided into two independent jobs.
-
-### Build
-
-The build job performs the following steps:
-
-1. checks out the repository,
-2. builds the backend Docker image using `docker compose build`,
-3. starts the Docker Compose stack.
-
-Building the image separately ensures that the application can be successfully containerized before any tests are executed.
-
----
-
-### Test
-
-The test job performs the following steps:
-
-1. checks out the repository,
-2. starts the Docker Compose stack,
-3. executes test scripts inside the dedicated container,
-6. tears down the Docker Compose stack.
-
-The Docker Compose configuration starts three services:
-
-- the FastAPI backend,
-- a Redis container,
-- a dedicated test container.
-
-The test container allows to execture tests against the running backend.
-
-Since the workflow builds the application locally and executes all tests within the GitHub Actions runner, no external infrastructure is required.
-
-The workflow does not reference GitHub Secrets and can therefore safely execute for pull requests submitted by contributors without write access to the repository.
-
----
-
-# Continuous Deployment (Prototype)
-
-Deployment is implemented in
-
-```
-.github/workflows/deploy.yml
-```
-
-and is triggered whenever changes are pushed to the `main` branch after a pull request has been merged.
-
-The deployment pipeline currently consists of three jobs.
-
-## Build
-
-The build stage
-
-1. checks out the repository,
-2. authenticates to AWS using GitHub's OIDC integration,
-3. logs into Amazon ECR,
-4. builds the backend Docker image,
-5. tags the image using the current Git commit SHA.
-
-The generated image tag is exported for the subsequent workflow stages.
-
----
-
-## Push
-
-The push stage authenticates to Amazon ECR and uploads the tagged backend image to the configured Elastic Container Registry repository.
-
----
-
-## Deploy
-
-The deployment stage updates the ECS service using the new container image.
-
-The ECS task definition references:
-
-- the backend image stored in Amazon ECR,
-- the official Redis image from Docker Hub.
-
-Updating the ECS task definition causes the service to deploy the newly built backend while preserving the remainder of the deployment configuration.
-
-The deployment workflow currently serves as a prototype and provides the basis for a future production deployment pipeline.
-
----
 
 # Containerization
 
@@ -499,10 +397,10 @@ docker compose up --build
 To execute the stability tests locally:
 
 ```bash
-docker compose run --rm test tests/test_workload.py
+docker compose run --rm test pytest tests/test_workload.py
 ```
 ```bash
-docker compose run --rm test tests/test_concurrency.py
+docker compose run --rm test pytest tests/test_concurrency.py
 ```
 
 
@@ -577,6 +475,94 @@ docker rm -f backend redis
 docker network rm my_network
 docker volume rm redis_data
 ```
+
+# Continuous Integration
+
+Continuous Integration workflows are located in
+
+```
+.github/workflows/
+```
+
+## `test.yml`
+
+The testing workflow is executed whenever a pull request targets the `main` branch.
+
+The workflow is divided into two independent jobs.
+
+### Build
+
+The build job performs the following steps:
+
+1. checks out the repository,
+2. builds the backend Docker image using `docker compose build`,
+3. starts the Docker Compose stack.
+
+Building the image separately ensures that the application can be successfully containerized before any tests are executed.
+
+---
+
+### Test
+
+The test job performs the following steps:
+
+1. checks out the repository,
+2. starts the Docker Compose stack,
+3. executes test scripts inside the dedicated container,
+6. tears down the Docker Compose stack.
+
+The Docker Compose configuration starts three services:
+
+- the FastAPI backend,
+- a Redis container,
+- a dedicated test container.
+
+The test container allows to execture tests against the running backend.
+
+Since the workflow builds the application locally and executes all tests within the GitHub Actions runner, no external infrastructure is required.
+
+The workflow does not reference GitHub Secrets and can therefore safely execute for pull requests submitted by contributors without write access to the repository.
+
+---
+
+# Continuous Deployment (Prototype)
+
+Deployment is implemented in
+
+```
+.github/workflows/deploy.yml
+```
+
+and is triggered whenever changes are pushed to the `main` branch after a pull request has been merged.
+
+The deployment workflow is triggered whenever changes are pushed to the `main` branch after a pull request has been merged.
+
+The deployment pipeline consists of a GitHub layer and an Amazon layer, as explained below.
+
+![Deployment architecture](docs/deploy_diagram.png)
+
+### **GitHub Actions (CD)**
+
+- *Checkout source from the repository*
+- *Build the backend Docker image and tag it with the current Git commit SHA*
+- *Push the image to the ECR*
+- *Update the ECS task definition so the service can deploy the new backend image*
+
+### **ECS Service**
+
+Watches task-definition changes and triggers a new deployment to roll out the updated backend
+
+### **ECS Task / Container**
+
+Pulls the backend image from ECR, runs the application and exposes the port for incoming requests
+
+
+### **Redis** (ElastiCache for Redis)
+
+In‑memory cache layer that sits inside the App's Virtual Private Cloud and serves all backend containers with fast read/write access.
+
+
+---
 
 
 # Future Extensions

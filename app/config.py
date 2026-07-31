@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     env: str = "prod"
 
     # ---------------------------------------------------------
+    # Backend URL
+    # ---------------------------------------------------------
+
+    backend_url: str = "http://backend:8080/api"
+
+    # ---------------------------------------------------------
     # REDIS (aiocache backend)
     # ---------------------------------------------------------
 
@@ -29,13 +35,6 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------
     # YFINANCE CONFIG 
     # ---------------------------------------------------------
-    # Network
-    yf_proxy: str | None = None
-    yf_retries: int = 0
-
-    # Debug
-    yf_debug_hide_exceptions: bool = True
-    yf_debug_logging: bool = True #False
 
     # Locale
     yf_locale_lang: str = "en-US"
